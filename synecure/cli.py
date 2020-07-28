@@ -113,7 +113,7 @@ def main():
 
     if list:
         for path, dest in directories.items():
-            print(f"{path:50} {','.join(dest)}")
+            print(f"{path:50} {dest}")
         return
 
     commands = []
