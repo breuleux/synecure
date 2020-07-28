@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os, sys, shutil, subprocess, collections, time, datetime, shlex, getopt, stat
+from .gitignore_parser import parse_gitignore
 
 # from python3.3 tree: Lib/shlex.py (shlex.quote not in python3.2)
 import re
@@ -325,10 +326,8 @@ def ignorepath(path, ignoreset):
 	if path == b"" or path.startswith(b".bsync-"):
 		return True
 	else:
-		for ignore in ignoreset:
-			if (path+b"/").startswith(ignore.encode()):
-				return True
-	return False
+		pp = path.decode("utf-8")
+		return ignoreset(path.decode("utf-8"))
 
 # http://stackoverflow.com/questions/9237246/python-how-to-read-file-with-nul-delimited-lines
 # http://bugs.python.org/issue1152248
@@ -394,7 +393,7 @@ def load_orig(ssh1,dir1name, ssh2,dir2name):
 
 	ignores1 = get_ignores(ignorefile1, ssh1,dir1name)
 	ignores2 = get_ignores(ignorefile2, ssh2,dir2name)
-	ignores = ignores1 | ignores2
+	ignores = parse_gitignore(ignores1 | ignores2)
 
 	common_snaps = snaps1.intersection(snaps2)
 	orig = collections.OrderedDict()
