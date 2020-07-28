@@ -7,7 +7,7 @@ license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
 python = "^3.7"
-coleo = "^0.1.4"
+coleo = "^0.1.5"
 
 [tool.poetry.dev-dependencies]
 black = "^19.10b0"
