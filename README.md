@@ -3,6 +3,8 @@
 
 Synecure provides a command line program called `sy` that allows easy synchronization of files and directories over SSH between different machines. It is mostly a wrapper around [bsync](https://github.com/dooblem/bsync), which is itself based on the standard UNIX tool `rsync`.
 
+This is beta software and comes with **NO GUARANTEES** that it will keep your data safe. It should not be used as backup solution.
+
 
 ## Install
 
