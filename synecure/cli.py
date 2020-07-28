@@ -105,7 +105,7 @@ def main():
     verbose: Argument & bool = default(False)
 
     # Prompt for changes (necessary to resolve conflicts)
-    # [alias -i]
+    # [alias: -i]
     interactive: Argument & bool = default(False)
 
     remotes = _get_config("remotes.json")
