@@ -19,6 +19,7 @@
 
 import os, sys, shutil, subprocess, collections, time, datetime, shlex, getopt, stat
 from .gitignore_parser import parse_gitignore
+from .utils import get_config_path, readlines
 
 # from python3.3 tree: Lib/shlex.py (shlex.quote not in python3.2)
 import re
@@ -393,7 +394,8 @@ def load_orig(ssh1,dir1name, ssh2,dir2name):
 
 	ignores1 = get_ignores(ignorefile1, ssh1,dir1name)
 	ignores2 = get_ignores(ignorefile2, ssh2,dir2name)
-	ignores = parse_gitignore(ignores1 | ignores2)
+	ignores_global = readlines(get_config_path("ignore"))
+	ignores = parse_gitignore(ignores1 | ignores2 | set(ignores_global))
 
 	common_snaps = snaps1.intersection(snaps2)
 	orig = collections.OrderedDict()

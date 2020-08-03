@@ -16,7 +16,7 @@ flake8 = "^3.8.2"
 
 [tool.poetry.scripts]
 sy = "synecure.cli:entry_sy"
-sy-remote = "synecure.cli:entry_sy_remote"
+sy-config = "synecure.cli:entry_sy_config"
 bsync = "synecure.cli:entry_bsync"
 
 [build-system]

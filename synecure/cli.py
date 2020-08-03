@@ -5,6 +5,8 @@ import subprocess
 import shlex
 from coleo import Argument, auto_cli, default
 
+from .utils import get_config, get_config_path, write_config, readlines, writelines
+
 
 def q(message=None):
     if message:
@@ -19,31 +21,6 @@ def _check_remote(cfg, name, msg=None):
             print(msg)
         q()
     return cfg[name]
-
-
-def _get_config_path(name=None):
-    path = os.path.expanduser("~/.config/synecure")
-    if name is not None:
-        path = os.path.join(path, name)
-    return path
-
-
-def _get_config(name):
-    path = _get_config_path(name)
-    if not os.path.exists(path):
-        return {}
-    with open(path) as f:
-        return json.load(f)
-
-
-def _write_config(name, cfg, silent=False):
-    path = _get_config_path(name)
-    cdir = os.path.dirname(path)
-    os.makedirs(cdir, exist_ok=True)
-    with open(path, "w") as f:
-        json.dump(cfg, f, indent=4)
-    if not silent:
-        print(f"Written config at: {path}")
 
 
 def _sort_paths(remote):
@@ -63,11 +40,11 @@ def entry_sy():
     auto_cli(main)
 
 
-def entry_sy_remote():
+def entry_sy_config():
     commands = {}
     for name, value in globals().items():
         parts = name.split("_")
-        if parts[0] == "remote" and len(parts) > 1:
+        if parts[0] == "config" and len(parts) > 1:
             curr = commands
             for part in parts[1:-1]:
                 curr = curr.setdefault(part, {})
@@ -108,8 +85,8 @@ def main():
     # [alias: -i]
     interactive: Argument & bool = default(False)
 
-    remotes = _get_config("remotes.json")
-    directories = _get_config("directories.json")
+    remotes = get_config("remotes.json")
+    directories = get_config("directories.json")
 
     if list:
         for path, dest in directories.items():
@@ -138,7 +115,7 @@ def main():
         if not show_plan:
             subprocess.run(command)
 
-    _write_config("directories.json", directories, silent=True)
+    write_config("directories.json", directories, silent=True)
 
 
 def plan_sync(path, remote_name, remotes, directories,
@@ -237,7 +214,7 @@ def remote_add():
     # [alias: -p]
     port: Argument = default(22)
 
-    cfg = _get_config("remotes.json")
+    cfg = get_config("remotes.json")
     if "@" in url:
         cfg[name] = {
             "type": "ssh",
@@ -256,23 +233,23 @@ def remote_add():
                 os.getenv("HOME"): os.path.realpath(os.path.expanduser(url))
             }
         }
-    _write_config("remotes.json", cfg)
+    write_config("remotes.json", cfg)
 
 
-def remote_view():
+def config_view():
     # Name of the remote
     # [positional: ?]
     name: Argument
 
-    cfg = _get_config("remotes.json")
+    cfg = get_config("remotes.json")
     if name is not None:
         cfg = _check_remote(cfg, name)
 
     print(json.dumps(cfg, indent=4))
 
 
-def remote_list():
-    cfg = _get_config("remotes.json")
+def config_list():
+    cfg = get_config("remotes.json")
     for name, defn in cfg.items():
         if defn['port'] in (None, 22):
             port = ""
@@ -283,7 +260,7 @@ def remote_list():
             print(f"    {local_path:30} -> :{remote_path}")
 
 
-def remote_path():
+def config_path():
     # Name of the remote
     # [positional]
     name: Argument
@@ -304,7 +281,7 @@ def remote_path():
     # [alias: -r]
     remove: Argument = default(None)
 
-    cfg = _get_config("remotes.json")
+    cfg = get_config("remotes.json")
     remote = _check_remote(cfg, name, msg="Nothing to do")
 
     if list:
@@ -315,7 +292,7 @@ def remote_path():
         if remove not in remote["paths"]:
             q(f"Source path '{remove}' is not mapped")
         del remote["paths"][remove]
-        _write_config("remotes.json", cfg)
+        write_config("remotes.json", cfg)
 
     else:
         if source is None:
@@ -324,15 +301,52 @@ def remote_path():
             q("DEST must be specified")
         paths = remote["paths"]
         paths[source] = dest
-        _write_config("remotes.json", cfg)
+        write_config("remotes.json", cfg)
 
 
-def remote_remove():
+def config_remove():
     # Name of the remote
     # [positional]
     name: Argument
 
-    cfg = _get_config("remotes.json")
+    cfg = get_config("remotes.json")
     _check_remote(cfg, name, msg="Nothing to remove")
     del cfg[name]
-    _write_config("remotes.json", cfg)
+    write_config("remotes.json", cfg)
+
+
+def config_ignore():
+    # Patterns to ignore
+    # [positional: *]
+    patterns: Argument = default([])
+
+    ign = get_config_path("ignore")
+    lines = readlines(ign)
+
+    for line in lines:
+        print(f" {line}")
+    for pattern in patterns:
+        if pattern not in lines:
+            print(f"+{pattern}")
+            lines.append(pattern)
+
+    writelines(ign, lines)
+
+
+def config_unignore():
+    # Patterns to ignore
+    # [positional: *]
+    patterns: Argument = default([])
+
+    ign = get_config_path("ignore")
+    lines = readlines(ign)
+
+    new_lines = []
+    for line in lines:
+        if line in patterns:
+            print(f"-{line}")
+        else:
+            print(f" {line}")
+            new_lines.append(line)
+
+    writelines(ign, new_lines)
