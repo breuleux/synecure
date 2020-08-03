@@ -19,20 +19,7 @@
 
 import os, sys, shutil, subprocess, collections, time, datetime, shlex, getopt, stat
 from .gitignore_parser import parse_gitignore
-from .utils import get_config_path, readlines
-
-# from python3.3 tree: Lib/shlex.py (shlex.quote not in python3.2)
-import re
-_find_unsafe = re.compile(r'[^\w@%+=:,./-]', re.ASCII).search
-def quote(s):
-    """Return a shell-escaped version of the string *s*."""
-    if not s:
-        return "''"
-    if _find_unsafe(s) is None:
-        return s
-    # use single quotes, and put single quotes into double quotes
-    # the string $'b is then quoted as '$'"'"'b'
-    return "'" + s.replace("'", "'\"'\"'") + "'"
+from .utils import get_config_path, readlines, quote
 
 def quotepath(path):
 	return b"'" + path.replace(b"'", b"'\"'\"'") + b"'"

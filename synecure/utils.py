@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 
 def get_config_path(name=None):
@@ -42,3 +43,17 @@ def writelines(filename, lines):
     with open(filename, "w") as f:
         for line in lines:
             print(line, file=f)
+
+_find_unsafe = re.compile(r'[^\w@%+=:,./-]', re.ASCII).search
+
+
+# from python3.3 tree: Lib/shlex.py (shlex.quote not in python3.2)
+def quote(s):
+    """Return a shell-escaped version of the string *s*."""
+    if not s:
+        return "''"
+    if _find_unsafe(s) is None:
+        return s
+    # use single quotes, and put single quotes into double quotes
+    # the string $'b is then quoted as '$'"'"'b'
+    return "'" + s.replace("'", "'\"'\"'") + "'"

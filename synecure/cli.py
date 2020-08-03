@@ -5,7 +5,7 @@ import subprocess
 import shlex
 from coleo import Argument, auto_cli, default
 
-from .utils import get_config, get_config_path, write_config, readlines, writelines
+from .utils import get_config, get_config_path, write_config, readlines, writelines, quote
 
 
 def q(message=None):
@@ -118,20 +118,30 @@ def main():
     write_config("directories.json", directories, silent=True)
 
 
+def _check_dir(url, path, port):
+    if url:
+        args = ["ssh", url]
+        if port:
+            args.extend(["-p", "22005"])
+        args.append(f"test -d {quote(path)}")
+        result = subprocess.call(args)
+        return result == 0
+
+    else:
+        return os.path.isdir(path)
+
+
 def plan_sync(path, remote_name, remotes, directories,
               dry=False, verbose=False, interactive=False):
-    commands = []
-
     if remote_name is None:
         if path not in directories:
             q("Please specify a destination")
         regdest = directories[path]
         assert regdest is not None
-        commands += plan_sync(path, regdest, remotes, directories,
+        return plan_sync(path, regdest, remotes, directories,
             dry=dry,
             interactive=interactive
         )
-        return commands
 
     directories[path] = remote_name
 
@@ -154,7 +164,14 @@ def plan_sync(path, remote_name, remotes, directories,
     else:
         print(f"# Unknown remote type: {remote['type']}")
 
-    if os.path.isdir(path):
+    commands = []
+
+    if os.path.exists(path):
+        isdir = os.path.isdir(path)
+    else:
+        isdir = _check_dir(remote["url"], destpath, remote["port"])
+
+    if isdir:
         # Use bsync to synchronize both directories
 
         cmdopts = ["-d"]
