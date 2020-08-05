@@ -1,5 +1,3 @@
-.envrc
 __pycache__
-.bsync*
 *.egg-info
 dist/
