@@ -20,6 +20,15 @@
 import os, sys, shutil, subprocess, collections, time, datetime, shlex, getopt, stat
 from .gitignore_parser import parse_gitignore
 from .utils import get_config_path, readlines, quote
+from collections import defaultdict
+
+
+DEBUG = False
+
+if DEBUG:
+	from blessed import Terminal
+	T = Terminal()
+
 
 def quotepath(path):
 	return b"'" + path.replace(b"'", b"'\"'\"'") + b"'"
@@ -70,6 +79,117 @@ class SshCon():
 		cmd = "sh -c " + quote(cmd)
 		return [*self.getcmdlist(), cmd]
 
+	def popen(self, *args, **kwargs):
+		return Popen(*self.getcmdlist(), *args, **kwargs)
+
+	def run(self, *args, **kwargs):
+		return Run(*self.getcmdlist(), *args, **kwargs)
+
+	def call(self, *args, **kwargs):
+		return Call(*self.getcmdlist(), *args, **kwargs)
+
+	def check_call(self, *args, **kwargs):
+		return CheckCall(*self.getcmdlist(), *args, **kwargs)
+
+	def check_output(self, *args, **kwargs):
+		return CheckOutput(*self.getcmdlist(), *args, **kwargs)
+
+
+class Command:
+	def __init__(self, *args, **kwargs):
+		self.args = args
+		kwargs.setdefault("stdout", subprocess.DEVNULL)
+		kwargs.setdefault("stderr", subprocess.DEVNULL)
+		self.kwargs = kwargs
+
+
+def prc(command, *args):
+	if DEBUG:
+		if args[0] == "ssh":
+			args = args[4:]
+			color = T.bold_green
+		else:
+			color = T.bold_yellow
+		print(T.bold_cyan(f"{command:15}"),
+				*map(color, map(str, args)))
+
+
+class Popen(Command):
+	def run(self):
+		prc("popen", *self.args)
+		return subprocess.Popen(self.args, **self.kwargs)
+
+
+class Run(Command):
+	def run(self):
+		prc("run", *self.args)
+		return subprocess.run(self.args, **self.kwargs)
+
+
+class Call(Command):
+	def run(self):
+		prc("call", *self.args)
+		return subprocess.call(self.args, **self.kwargs)
+
+
+class CheckCall(Command):
+	def run(self):
+		prc("check_call", *self.args)
+		return subprocess.check_call(self.args, **self.kwargs)
+
+
+class CheckOutput(Command):
+	def __init__(self, *args, **kwargs):
+		self.args = args
+		self.kwargs = kwargs
+
+	def run(self):
+		prc("check_output", *self.args)
+		return subprocess.check_output(self.args, **self.kwargs)
+
+
+class Result:
+	def __init__(self, stdout, returncode):
+		self.stdout = stdout
+		self.returncode = returncode
+
+
+class And:
+	def __init__(self, *clauses):
+		self.clauses = clauses
+
+	def run(self):
+		for clause in self.clauses:
+			if clause is True:
+				result = Result(returncode=0, stdout="")
+			elif clause is False:
+				return Result(returncode=1, stdout="")
+			else:
+				result = clause.run()
+				if result.returncode != 0:
+					return result
+		else:
+			return result
+
+
+class Or:
+	def __init__(self, *clauses):
+		self.clauses = clauses
+
+	def run(self):
+		for clause in self.clauses:
+			if clause is True:
+				return Result(returncode=0, stdout="")
+			elif clause is False:
+				result = Result(returncode=1, stdout="")
+			else:
+				result = clause.run()
+				if result.returncode == 0:
+					return result
+		else:
+			return result
+
+
 def joinargs(arglist):
 	cmd = ""
 	for arg in arglist:
@@ -95,8 +215,7 @@ def ssh_master_init(ssh):
 	tmpdir = tempfile.mkdtemp()
 	ssh.sock = os.path.join(tmpdir, "bsync")
 	try:
-		# print(ssh.getcmdlist()+["-fNM"])
-		subprocess.check_call( ssh.getcmdlist()+["-fNM"] )
+		ssh.check_call("-fNM").run()
 	except subprocess.CalledProcessError:
 		sys.exit("Error: could not open SSH connection.")
 	except FileNotFoundError:
@@ -107,8 +226,7 @@ def ssh_master_init(ssh):
 def ssh_master_clean(tmpdir, ssh):
 	# send exit signal to ssh master, this will remove the socket
 	printv("Cleaning SSH master...")
-	with open(os.devnull, 'w') as devnull:
-		ret = subprocess.call(ssh.getcmdlist()+["-Oexit"], stderr=devnull)
+	ret = ssh.call("-Oexit").run()
 	if ret != 0:
 	        printerr("Error in ssh master exit cmd.")
 		
@@ -123,9 +241,6 @@ def ssh_master_clean(tmpdir, ssh):
 
 findformat = "%i\\0%P\\0%y\\0%T@\\0%s\\0%#m\\0"
 # find test1/ -printf "%i\t%P\t%y\t%T@\t%s\t%#m\n"
-
-def ssh_shell_init(ssh):
-	return subprocess.Popen(ssh.getcmdlist()+["sh -e"], stdin=subprocess.PIPE)
 
 def rsync_init(sshSrc,dirnameSrc, sshDst,dirnameDst):
 	#rsync ssh/dir1 --> local/dir2
@@ -142,15 +257,14 @@ def rsync_init(sshSrc,dirnameSrc, sshDst,dirnameDst):
 		cmdlist.remove(ssh.userhost)
 		args.append("-e "+joinargs(cmdlist))
 
-	return subprocess.Popen(["rsync"]+args+[rsyncsrc, rsyncdst], stdin=subprocess.PIPE)
+	return Popen("rsync", *args, rsyncsrc, rsyncdst, stdin=subprocess.PIPE).run()
 
 def rsync_check_install(ssh):
-	remote_check = ""
-	if ssh != None:
-		remote_check = " && "+ssh.getcmdstr()+" which rsync"
-
-	with open(os.devnull, 'w') as devnull:
-		ret = subprocess.call("which rsync"+remote_check, shell=True, stdout=devnull, stderr=devnull)
+	cmd = And(
+		Run("rsync", "--version"),
+		ssh.run("rsync", "--version") if ssh is not None else True,
+	)
+	ret = cmd.run().returncode
 	if ret != 0:
 		sys.exit("Error: please check that rsync is installed (both local and remote sides)")
 
@@ -160,45 +274,50 @@ def find_check_command(ssh):
 	findhelp = "(On OSX, you can download it with 'brew install findutils')"
 	findargs = ["-maxdepth", "0" ,"-printf", "OK"]
 
-	with open(os.devnull, 'w') as devnull:
+	try:
+		CheckCall("find", *findargs).run()
+		localfind = "find"
+	except:
 		try:
-			subprocess.check_call(["find"]+findargs, stdout=devnull, stderr=devnull)
-			localfind = "find"
+			CheckCall("gfind", *findargs).run()
+			localfind = "gfind"
 		except:
-			try:
-				subprocess.check_call(["gfind"]+findargs, stdout=devnull, stderr=devnull)
-				localfind = "gfind"
-			except:
-				sys.exit("Error: local GNU find not found. "+findhelp)
-	
-		if ssh != None:
-			if subprocess.call(ssh.getcmdlist()+["find"]+findargs, stdout=devnull, stderr=devnull) == 0:
-				remotefind = "find"
-			elif subprocess.call(ssh.getcmdlist()+["gfind"]+findargs, stdout=devnull, stderr=devnull) == 0:
-				remotefind = "gfind"
-			else:
-				sys.exit("Error: remote GNU find not found. "+findhelp)
-		
+			sys.exit("Error: local GNU find not found. "+findhelp)
+
+	if ssh != None:
+		if ssh.call("find", *findargs).run() == 0:
+			remotefind = "find"
+		elif ssh.call("gfind", *findargs).run() == 0:
+			remotefind = "gfind"
+		else:
+			sys.exit("Error: remote GNU find not found. "+findhelp)
+
 	return localfind, remotefind
 
-# check if the filesystem supports permissions
-def fs_check_perms(ssh, dirname):
-	testtmpfile = quote( dirname+"/.bsync-permtest-"+datetime.datetime.now().strftime("%Y%m%d%H%M%S.%f") )
-	# try to create a file with no permissions at all
-	# if the resulting file perms is 0, the fs supports permissions (non fat...)
-	testpermcmd = "umask 777; touch "+testtmpfile+"; [ \"$(stat -c%a "+testtmpfile+")\" = \"0\" ]; ret=$?; rm -f "+testtmpfile+"; exit $ret"
+# TODO
+# # check if the filesystem supports permissions
+# def fs_check_perms(ssh, dirname):
+# 	testtmpfile = quote( dirname+"/.bsync-permtest-"+datetime.datetime.now().strftime("%Y%m%d%H%M%S.%f") )
+# 	# try to create a file with no permissions at all
+# 	# if the resulting file perms is 0, the fs supports permissions (non fat...)
+# 	testpermcmd = "umask 777; touch "+testtmpfile+"; [ \"$(stat -c%a "+testtmpfile+")\" = \"0\" ]; ret=$?; rm -f "+testtmpfile+"; exit $ret"
 
-	with open(os.devnull, 'w') as devnull:
-		if ssh == None:
-			ret = subprocess.call(testpermcmd, shell=True, stdout=devnull,stderr=devnull)
-		else:
-			ret = subprocess.call(ssh.getcmdlist()+[testpermcmd], stdout=devnull,stderr=devnull)
+# 	if ssh == None:
+# 		ret = Call(testpermcmd)
+# 	else:
+# 		ret = subprocess.call(ssh.getcmdlist()+[testpermcmd], stdout=devnull,stderr=devnull)
 
-	if ret==0:
-		return True
-	else:
-		print(getdirstr(ssh,dirname)+" has no permission support (fat?). Ignoring permissions.")
-		return False
+# 	# with open(os.devnull, 'w') as devnull:
+# 	# 	if ssh == None:
+# 	# 		ret = subprocess.call(testpermcmd, shell=True, stdout=devnull,stderr=devnull)
+# 	# 	else:
+# 	# 		ret = subprocess.call(ssh.getcmdlist()+[testpermcmd], stdout=devnull,stderr=devnull)
+
+# 	if ret==0:
+# 		return True
+# 	else:
+# 		print(getdirstr(ssh,dirname)+" has no permission support (fat?). Ignoring permissions.")
+# 		return False
 
 # check with rsync that directories are identical (-c flag)
 def rsync_check(sshSrc,dirnameSrc, sshDst,dirnameDst):
@@ -209,7 +328,9 @@ def rsync_check(sshSrc,dirnameSrc, sshDst,dirnameDst):
 	if ssh != None:
 		args.append("-e "+ssh.getcmdstr())
 
-	diff = subprocess.check_output(["rsync"]+args+[rsyncsrc, rsyncdst], universal_newlines=True).split("\n")
+	diff = CheckOutput(
+		"rsync", *args, rsyncsrc, rsyncdst, universal_newlines=True
+	).run().split("\n")
 
 	diff.remove("")
 	diff.remove("./")
@@ -222,17 +343,35 @@ def rsync_check(sshSrc,dirnameSrc, sshDst,dirnameDst):
 def make_snapshot(ssh,dirname, oldsnapname, newsnapname):
 	global findformat, findcmdlocal, findcmdremote
 
-	cmd = " %s -fprintf %s '%s'" % (quote(dirname), quote(dirname+"/"+newsnapname), findformat)
-	if oldsnapname!=None:
-		cmd+= " && rm -f "+quote(dirname+"/"+oldsnapname)
-	# remove inconsistent newsnap if error in find
-	cmd+= " || ( rm -f "+quote(dirname+"/"+newsnapname)+" && false )"
+	findcmd = [dirname, "-fprintf", os.path.join(dirname, newsnapname), f"'{findformat}'"]
+	oldsnap = oldsnapname and os.path.join(dirname, oldsnapname)
+	newsnap = os.path.join(dirname, newsnapname)
 
-	if ssh==None:
-		ret = subprocess.call(findcmdlocal+cmd, shell=True)
+	if ssh is None:
+		cmd = Or(
+			And(
+				Run(findcmdlocal, *findcmd),
+				True if oldsnapname is None else Run("rm", "-f", oldsnap)
+			),
+			And(
+				Run("rm", "-f", newsnap),
+				False
+			)
+		)
+
 	else:
-		ret = subprocess.call(ssh.getcalllist(findcmdremote+cmd))
+		cmd = Or(
+			And(
+				ssh.run(findcmdremote, *findcmd),
+				True if oldsnapname is None else ssh.run("rm", "-f", oldsnap)
+			),
+			And(
+				ssh.run("rm", "-f", newsnap),
+				False
+			)
+		)
 
+	ret = cmd.run().returncode
 	if ret != 0: sys.exit("Error making a snapshot.")
 
 def make_snapshots(ssh1,dir1name, ssh2,dir2name, oldsnapname):
@@ -246,16 +385,16 @@ def make_snapshots(ssh1,dir1name, ssh2,dir2name, oldsnapname):
 def get_find_proc(ssh, dirname):
 	global findformat, findcmdlocal, findcmdremote
 	if ssh==None:
-		return subprocess.Popen([ findcmdlocal, dirname, "-printf", findformat ], stdout=subprocess.PIPE)
+		return Popen(findcmdlocal, dirname, "-printf", findformat, stdout=subprocess.PIPE).run()
 	else:
-		return subprocess.Popen(ssh.getcmdlist()+[findcmdremote+" "+quote(dirname)+" -printf '"+findformat+"'" ], stdout=subprocess.PIPE)
+		return ssh.popen(findcmdremote, dirname, "-printf", f"'{findformat}'", stdout=subprocess.PIPE).run()
 
 # get a file descriptor to read the snapshot file
 def get_snap_fd(ssh, dirname, snapname):
 	if ssh==None:
 		return open(dirname+"/"+snapname, "rb")
 	else:
-		return subprocess.Popen(ssh.getcmdlist()+ [ "cat "+quote(dirname+"/"+snapname) ], stdout=subprocess.PIPE).stdout
+		return ssh.popen("cat", os.path.join(dirname, snapname), stdout=subprocess.PIPE).run().stdout
 
 # returns all .bsync-snap-* and .bsync-ignore filenames from dir
 def get_bsync_files(ssh, dirname):
@@ -271,11 +410,21 @@ def get_bsync_files(ssh, dirname):
 				if f.startswith(".bsync-"):
 					files.add(f)
 		else:
-			cmd = "[ -r "+quote(dirname)+" ] && cd "+quote(dirname)+" 2>/dev/null && ( ls -1 .bsync-* 2>/dev/null || true )"
-			if mkdirp:
-				cmd = "mkdir -p "+quote(dirname)+" && "+cmd
-			out = subprocess.check_output(ssh.getcalllist(cmd), universal_newlines=True)
-			files = set( out.split("\n") )
+			cmd = And(
+				ssh.run("mkdir", "-p", dirname) if mkdirp
+				else ssh.run("test", "-r", dirname),
+				Or(
+					ssh.run("ls", "-1", os.path.join(dirname, ".bsync-*"),
+							stdout=subprocess.PIPE,
+							universal_newlines=True),
+					True
+				)
+			)
+			out = cmd.run()
+			if out.returncode != 0:
+				sys.exit("Error: could not open directory: "+getdirstr(ssh,dirname)+" (is it created?)")
+
+			files = {os.path.basename(f) for f in out.stdout.split("\n") if f}
 	except (FileNotFoundError, subprocess.CalledProcessError):
 		sys.exit("Error: could not open directory: "+getdirstr(ssh,dirname)+" (is it created?)")
 
@@ -297,7 +446,7 @@ def get_ignores(ignorefile, ssh,dirname):
 		with open(dirname+"/"+ignorefile) as fd:
 			out = fd.read()
 	else:
-		out = subprocess.check_output(ssh.getcmdlist()+[ "cat "+quote(dirname+"/"+ignorefile) ], universal_newlines=True)
+		out = ssh.check_output("cat", os.path.join(dirname, ignorefile), universal_newlines=True).run()
 
 	lines = out.split("\n")
 
@@ -534,49 +683,6 @@ def ask_conflict(f1, f2, path, tokeep):
 		elif resp == "q" or resp == "Q" or resp == "Quit":
 			sys.exit(0)
 
-#### file actions
-def remove(shproc, path):
-	if shproc == None:
-		os.remove(path)
-	else:
-		shproc.stdin.write( b"rm " + quotepath(path) + b"\n" )
-		shproc.stdin.flush()
-
-def removedir(shproc, path):
-	if shproc == None:
-		try:
-			os.rmdir(path)
-		except OSError as e:
-			#pass
-			print("Warning: "+str(e)) # can happen: dir removed in 1, file dir/f added in 2
-	else:
-		shproc.stdin.write( b"rmdir " + quotepath(path) + b" || true\n" )
-		shproc.stdin.flush()
-
-def mkdir(shproc, path, perms):
-	if shproc == None:
-		if perms=="":
-			os.mkdir(path)
-		else:
-			os.mkdir(path, int(perms, 8) )
-	else:
-		if perms=="":
-			shproc.stdin.write( b"mkdir " + quotepath(path) + b"\n" )
-		else:
-			shproc.stdin.write( b"mkdir -m" + perms.encode() + b" " + quotepath(path) + b"\n" )
-		shproc.stdin.flush()
-
-def move(shproc, src, dst, perms):
-	if shproc == None:
-		os.rename(src, dst)
-		if perms!="":
-			os.chmod(dst, int(perms, 8) )
-	else:
-		shproc.stdin.write( b"mv " + quotepath(src) + b" " + quotepath(dst) + b"\n" )
-		if perms!="":
-			shproc.stdin.write( b"chmod " + perms.encode() + b" " + quotepath(dst) + b"\n" )
-		shproc.stdin.flush()
-
 # just write a path in rsync process stdin
 def rsync(rsyncproc, path):
 	rsyncproc.stdin.write(path+b"\0")
@@ -663,34 +769,62 @@ def apply_small_actions(ssh,dirname, mkdirs,moves,rm,rmdirs):
 	if mkdirs==[] and moves==[] and len(rm)==0 and rmdirs==[]:
 		return
 
-	shproc = None
-	# if we need a ssh shell
 	if ssh != None:
-		shproc = ssh_shell_init(ssh)
+		mkdir_lists = defaultdict(list)
+		for f in mkdirs:
+			mkdir_lists[f.perms].append(
+				os.path.join(dirname, f.path.decode("utf8"))
+			)
 
-	# mkdirss must be done before
-	os.umask(0000) #disable umask to allow for any mkdirs
-	for f in mkdirs:
-		mkdir(shproc, dirname.encode()+b"/"+f.path, f.perms)
+		for perms, paths in mkdir_lists.items():
+			if perms == "":
+				ssh.run("mkdir", *paths).run()
+			else:
+				ssh.run("mkdir", "-m", perms, *paths).run()
 
-	# moves
-	for fromfile, targetfile in moves:
-		perms = "" if fromfile.perms == targetfile.perms else targetfile.perms
-		move(shproc, dirname.encode()+b"/"+fromfile.path, dirname.encode()+b"/"+targetfile.path, perms)
+		for fromfile, targetfile in moves:
+			src = os.path.join(dirname, fromfile.path.decode("utf8"))
+			dst = os.path.join(dirname, targetfile.path.decode("utf8"))
+			ssh.run("mv", src, dst).run()
+			if fromfile.perms != targetfile.perms:
+				ssh.run("chmod", targetfile.perms, dst).run()
 
-	# removes, after the check moves step
-	for f in rm.values():
-		remove(shproc, dirname.encode()+b"/"+f.path)
+		if rm:
+			# removes, after the check moves step
+			rms = [os.path.join(dirname, f.path.decode("utf8"))
+				   for f in rm.values()]
+			ssh.run("rm", *rms).run()
 
-	# rmdirs must be done after
-	for path in rmdirs:
-		removedir(shproc, dirname.encode()+b"/"+path)
+		if rmdirs:
+			rmdirs = [os.path.join(dirname, path.decode("utf8"))
+					  for path in rmdirs]
+			ssh.run("rmdir", *rmdirs).run()
 
-	if shproc != None:
-		shproc.stdin.close()
-		shproc.wait() # wait shell process to exit
-		if shproc.returncode != 0:
-			sys.exit("Error in shell process.")
+	else:
+		# mkdirss must be done before
+		os.umask(0000) #disable umask to allow for any mkdirs
+		for f in mkdirs:
+			path = os.path.join(dirname, f.path.decode("utf8"))
+			if f.perms=="":
+				os.mkdir(path)
+			else:
+				os.mkdir(path, int(f.perms, 8) )
+
+		# moves
+		for fromfile, targetfile in moves:
+			src = os.path.join(dirname, fromfile.path.decode("utf8"))
+			dst = os.path.join(dirname, targetfile.path.decode("utf8"))
+			os.rename(src, dst)
+			if fromfile.perms != targetfile.perms:
+				os.chmod(dst, int(targetfile.perms, 8))
+
+		# removes, after the check moves step
+		for f in rm.values():
+			os.remove(os.path.join(dirname, f.path.decode("utf8")))
+
+		# rmdirs must be done after
+		for path in rmdirs:
+			os.rmdir(os.path.join(dirname, path))
 
 ##### actions involving an rsync transfer
 def apply_rsync_actions(sshSrc,dirnameSrc, sshDst,dirnameDst, pathlist):
@@ -813,8 +947,9 @@ dir2name = os.path.join(dir2name, '')
 
 # try to get console width, for displaying actions, if running interactive
 try:
-	with open(os.devnull, 'w') as devnull:
-		height, width = subprocess.check_output(['stty', 'size'], universal_newlines=True, stderr=devnull).split()
+	height, width = CheckOutput(
+		'stty', 'size', universal_newlines=True, stderr=subprocess.DEVNULL
+	).run().split()
 	console_width = int(width)
 except:
 	console_width = 0
