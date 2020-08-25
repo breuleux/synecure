@@ -19,7 +19,7 @@
 
 import os, sys, shutil, subprocess, collections, time, datetime, shlex, getopt, stat
 from .gitignore_parser import parse_gitignore
-from .utils import get_config_path, readlines, quote
+from .utils import NoQuote, get_config_path, readlines, quote
 from collections import defaultdict
 
 
@@ -80,18 +80,23 @@ class SshCon():
 		return [*self.getcmdlist(), cmd]
 
 	def popen(self, *args, **kwargs):
+		args = map(quote, args)
 		return Popen(*self.getcmdlist(), *args, **kwargs)
 
 	def run(self, *args, **kwargs):
+		args = map(quote, args)
 		return Run(*self.getcmdlist(), *args, **kwargs)
 
 	def call(self, *args, **kwargs):
+		args = map(quote, args)
 		return Call(*self.getcmdlist(), *args, **kwargs)
 
 	def check_call(self, *args, **kwargs):
+		args = map(quote, args)
 		return CheckCall(*self.getcmdlist(), *args, **kwargs)
 
 	def check_output(self, *args, **kwargs):
+		args = map(quote, args)
 		return CheckOutput(*self.getcmdlist(), *args, **kwargs)
 
 
@@ -116,26 +121,30 @@ def prc(command, *args):
 
 class Popen(Command):
 	def run(self):
-		prc("popen", *self.args)
-		return subprocess.Popen(self.args, **self.kwargs)
+		args = [str(x) for x in self.args]
+		prc("popen", *args)
+		return subprocess.Popen(args, **self.kwargs)
 
 
 class Run(Command):
 	def run(self):
-		prc("run", *self.args)
-		return subprocess.run(self.args, **self.kwargs)
+		args = [str(x) for x in self.args]
+		prc("run", *args)
+		return subprocess.run(args, **self.kwargs)
 
 
 class Call(Command):
 	def run(self):
-		prc("call", *self.args)
-		return subprocess.call(self.args, **self.kwargs)
+		args = [str(x) for x in self.args]
+		prc("call", *args)
+		return subprocess.call(args, **self.kwargs)
 
 
 class CheckCall(Command):
 	def run(self):
-		prc("check_call", *self.args)
-		return subprocess.check_call(self.args, **self.kwargs)
+		args = [str(x) for x in self.args]
+		prc("check_call", *args)
+		return subprocess.check_call(args, **self.kwargs)
 
 
 class CheckOutput(Command):
@@ -144,8 +153,9 @@ class CheckOutput(Command):
 		self.kwargs = kwargs
 
 	def run(self):
-		prc("check_output", *self.args)
-		return subprocess.check_output(self.args, **self.kwargs)
+		args = [str(x) for x in self.args]
+		prc("check_output", *args)
+		return subprocess.check_output(args, **self.kwargs)
 
 
 class Result:
@@ -414,7 +424,10 @@ def get_bsync_files(ssh, dirname):
 				ssh.run("mkdir", "-p", dirname) if mkdirp
 				else ssh.run("test", "-r", dirname),
 				Or(
-					ssh.run("ls", "-1", os.path.join(dirname, ".bsync-*"),
+					ssh.run("ls", "-1",
+							NoQuote(
+								os.path.join(quote(quote(dirname)), ".bsync-*")
+							),
 							stdout=subprocess.PIPE,
 							universal_newlines=True),
 					True

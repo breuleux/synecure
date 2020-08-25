@@ -47,9 +47,19 @@ def writelines(filename, lines):
 _find_unsafe = re.compile(r'[^\w@%+=:,./-]', re.ASCII).search
 
 
+class NoQuote:
+    def __init__(self, text):
+        self.text = text
+
+    def __str__(self):
+        return self.text
+
+
 # from python3.3 tree: Lib/shlex.py (shlex.quote not in python3.2)
 def quote(s):
     """Return a shell-escaped version of the string *s*."""
+    if isinstance(s, NoQuote):
+        return s
     if not s:
         return "''"
     if _find_unsafe(s) is None:
