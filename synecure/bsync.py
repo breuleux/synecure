@@ -74,11 +74,6 @@ class SshCon():
 	def getcmdstr(self):
 		return joinargs(self.getcmdlist())
 
-	def getcalllist(self, *args):
-		cmd = " ".join(args)
-		cmd = "sh -c " + quote(cmd)
-		return [*self.getcmdlist(), cmd]
-
 	def popen(self, *args, **kwargs):
 		args = map(quote, args)
 		return Popen(*self.getcmdlist(), *args, **kwargs)
