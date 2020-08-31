@@ -421,7 +421,7 @@ def get_bsync_files(ssh, dirname):
 				Or(
 					ssh.run("ls", "-1",
 							NoQuote(
-								os.path.join(quote(quote(dirname)), ".bsync-*")
+								os.path.join(quote(dirname), ".bsync-*")
 							),
 							stdout=subprocess.PIPE,
 							universal_newlines=True),

@@ -4,6 +4,9 @@ version = "0.1.5"
 description = "File sync utility"
 authors = ["Olivier Breuleux <breuleux@gmail.com>"]
 license = "GPL-3.0-or-later"
+readme = "README.md"
+homepage = "https://github.com/breuleux/synecure"
+repository = "https://github.com/breuleux/synecure"
 
 [tool.poetry.dependencies]
 python = "^3.7"
