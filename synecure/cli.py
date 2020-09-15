@@ -218,7 +218,7 @@ def plan_sync(path, remote_name, remotes, directories,
 #############
 
 
-def remote_add():
+def config_add():
     # Name of the remote
     # [positional]
     name: Argument
