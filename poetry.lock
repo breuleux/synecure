@@ -12,13 +12,13 @@ description = "Classes Without Boilerplate"
 name = "attrs"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-version = "19.3.0"
+version = "20.2.0"
 
 [package.extras]
-azure-pipelines = ["coverage", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface", "pytest-azurepipelines"]
-dev = ["coverage", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface", "sphinx", "pre-commit"]
-docs = ["sphinx", "zope.interface"]
-tests = ["coverage", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface"]
+dev = ["coverage (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface", "sphinx", "sphinx-rtd-theme", "pre-commit"]
+docs = ["sphinx", "sphinx-rtd-theme", "zope.interface"]
+tests = ["coverage (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "zope.interface"]
+tests_no_zope = ["coverage (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six"]
 
 [[package]]
 category = "dev"
@@ -54,10 +54,14 @@ description = "The nicest way to develop a command-line interface"
 name = "coleo"
 optional = false
 python-versions = ">=3.6,<4.0"
-version = "0.1.5"
+version = "0.2.0"
 
 [package.dependencies]
 ptera = ">=0.2.4,<0.3.0"
+
+[package.extras]
+toml = ["toml (>=0.10.0,<0.11.0)"]
+yaml = ["pyyaml (>=5.3,<6.0)"]
 
 [[package]]
 category = "main"
@@ -147,7 +151,7 @@ description = "Call graph addressing library."
 name = "ptera"
 optional = false
 python-versions = ">=3.6,<4.0"
-version = "0.2.4"
+version = "0.2.5"
 
 [package.dependencies]
 contextvars = ">=2.4,<3.0"
@@ -206,7 +210,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "995e2d7ba8ece265aeeb4a24f7f087c82ccdf6c9bddbf0211fa6a6e1d786eb05"
+content-hash = "81592902bccc65a6ebb0cdd25df1f173805f657a8d1b51e8f451cd6bc8c71b37"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -215,8 +219,8 @@ appdirs = [
     {file = "appdirs-1.4.4.tar.gz", hash = "sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41"},
 ]
 attrs = [
-    {file = "attrs-19.3.0-py2.py3-none-any.whl", hash = "sha256:08a96c641c3a74e44eb59afb61a24f2cb9f4d7188748e76ba4bb5edfa3cb7d1c"},
-    {file = "attrs-19.3.0.tar.gz", hash = "sha256:f7b7ce16570fe9965acd6d30101a28f62fb4a7f9e926b3bbc9b61f8b04247e72"},
+    {file = "attrs-20.2.0-py2.py3-none-any.whl", hash = "sha256:fce7fc47dfc976152e82d53ff92fa0407700c21acd20886a13777a0d20e655dc"},
+    {file = "attrs-20.2.0.tar.gz", hash = "sha256:26b54ddbbb9ee1d34d5d3668dd37d6cf74990ab23c828c2888dccdceee395594"},
 ]
 black = [
     {file = "black-19.10b0-py36-none-any.whl", hash = "sha256:1b30e59be925fafc1ee4565e5e08abef6b03fe455102883820fe5ee2e4734e0b"},
@@ -227,8 +231,8 @@ click = [
     {file = "click-7.1.2.tar.gz", hash = "sha256:d2b5255c7c6349bc1bd1e59e08cd12acbbd63ce649f2588755783aa94dfb6b1a"},
 ]
 coleo = [
-    {file = "coleo-0.1.5-py3-none-any.whl", hash = "sha256:cc84c476311f7b83b00475d8ff96d883f1b22c0e98fd733170017c50dfe2384a"},
-    {file = "coleo-0.1.5.tar.gz", hash = "sha256:4a164e0088500363e1f9de6ec543922e39a792efd2c7d6697b1b118cb565899e"},
+    {file = "coleo-0.2.0-py3-none-any.whl", hash = "sha256:33e2653cdb193b732a78c672338538cf7c78319f0d316697fcf8d94d35966d64"},
+    {file = "coleo-0.2.0.tar.gz", hash = "sha256:118324240e6482ec2251d61d5986682e584a930f4ff67270fd7eef0fa195b99b"},
 ]
 contextvars = [
     {file = "contextvars-2.4.tar.gz", hash = "sha256:f38c908aaa59c14335eeea12abea5f443646216c4e29380d7bf34d2018e2c39e"},
@@ -268,8 +272,8 @@ pathspec = [
     {file = "pathspec-0.8.0.tar.gz", hash = "sha256:da45173eb3a6f2a5a487efba21f050af2b41948be6ab52b6a1e3ff22bb8b7061"},
 ]
 ptera = [
-    {file = "ptera-0.2.4-py3-none-any.whl", hash = "sha256:de720ee409809453357e89f8192c47c1b3436f0ec8e3df4360160d6dee917fed"},
-    {file = "ptera-0.2.4.tar.gz", hash = "sha256:5dbd855857a22ab6e2e7b35a850dab3d9ec65df7b2898f93fa205144ffa828b0"},
+    {file = "ptera-0.2.5-py3-none-any.whl", hash = "sha256:d8688bfea501591ee4a49c38516d0dbc81112e8d94c1021d8f9c1fef82338bb3"},
+    {file = "ptera-0.2.5.tar.gz", hash = "sha256:11b6503f98a8d3f101c0e531dfe180fac61a1cd99e96e5f21f572b4cc90e49cc"},
 ]
 pycodestyle = [
     {file = "pycodestyle-2.6.0-py2.py3-none-any.whl", hash = "sha256:2295e7b2f6b5bd100585ebcb1f616591b652db8a741695b3d8f5d28bdc934367"},

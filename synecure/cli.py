@@ -3,7 +3,7 @@ import sys
 import json
 import subprocess
 import shlex
-from coleo import Argument, auto_cli, default
+from coleo import Option, default, run_cli
 
 from .utils import get_config, get_config_path, write_config, readlines, writelines, quote
 
@@ -37,7 +37,7 @@ def entry_bsync():
 
 
 def entry_sy():
-    auto_cli(main)
+    run_cli(main)
 
 
 def entry_sy_config():
@@ -49,7 +49,7 @@ def entry_sy_config():
             for part in parts[1:-1]:
                 curr = curr.setdefault(part, {})
             curr[parts[-1]] = value
-    auto_cli(commands)
+    run_cli(commands)
 
 
 ######
@@ -60,30 +60,30 @@ def entry_sy_config():
 def main():
     # List all sy directories
     # [alias: -l]
-    list: Argument & bool = default(False)
+    list: Option & bool = default(False)
 
     # Files to synchronize
     # [positional: *]
-    files: Argument
+    files: Option
 
     # Name of the remote to sync with
     # [alias: -r]
-    remote: Argument = default(None)
+    remote: Option = default(None)
 
     # Do a dry run
     # [alias: -n]
-    dry_run: Argument & bool = default(False)
+    dry_run: Option & bool = default(False)
 
     # List the commands sy will run
-    show_plan: Argument & bool = default(False)
+    show_plan: Option & bool = default(False)
 
     # Verbose output
     # [alias: -v]
-    verbose: Argument & bool = default(False)
+    verbose: Option & bool = default(False)
 
     # Prompt for changes (necessary to resolve conflicts)
     # [alias: -i]
-    interactive: Argument & bool = default(False)
+    interactive: Option & bool = default(False)
 
     remotes = get_config("remotes.json")
     directories = get_config("directories.json")
@@ -221,15 +221,15 @@ def plan_sync(path, remote_name, remotes, directories,
 def config_add():
     # Name of the remote
     # [positional]
-    name: Argument
+    name: Option
 
     # URL of the remote
     # [positional]
-    url: Argument
+    url: Option
 
     # Port to connect to
     # [alias: -p]
-    port: Argument = default(22)
+    port: Option = default(22)
 
     cfg = get_config("remotes.json")
     if "@" in url:
@@ -256,7 +256,7 @@ def config_add():
 def config_view():
     # Name of the remote
     # [positional: ?]
-    name: Argument
+    name: Option
 
     cfg = get_config("remotes.json")
     if name is not None:
@@ -280,23 +280,23 @@ def config_list():
 def config_path():
     # Name of the remote
     # [positional]
-    name: Argument
+    name: Option
 
     # Source path
     # [positional: ?]
-    source: Argument
+    source: Option
 
     # Destination path
     # [positional: ?]
-    dest: Argument
+    dest: Option
 
     # List path mappings
     # [alias: -l]
-    list: Argument & bool = default(False)
+    list: Option & bool = default(False)
 
     # Whether to remove the path
     # [alias: -r]
-    remove: Argument = default(None)
+    remove: Option = default(None)
 
     cfg = get_config("remotes.json")
     remote = _check_remote(cfg, name, msg="Nothing to do")
@@ -324,7 +324,7 @@ def config_path():
 def config_remove():
     # Name of the remote
     # [positional]
-    name: Argument
+    name: Option
 
     cfg = get_config("remotes.json")
     _check_remote(cfg, name, msg="Nothing to remove")
@@ -335,7 +335,7 @@ def config_remove():
 def config_ignore():
     # Patterns to ignore
     # [positional: *]
-    patterns: Argument = default([])
+    patterns: Option = default([])
 
     ign = get_config_path("ignore")
     lines = readlines(ign)
@@ -353,7 +353,7 @@ def config_ignore():
 def config_unignore():
     # Patterns to ignore
     # [positional: *]
-    patterns: Argument = default([])
+    patterns: Option = default([])
 
     ign = get_config_path("ignore")
     lines = readlines(ign)
