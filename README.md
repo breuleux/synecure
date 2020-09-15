@@ -15,28 +15,26 @@ pip install synecure
 
 ## Usage
 
-1. Set up a remote (to which you must already have SSH access)
-
 ```bash
-sy-config add desktop user@some.remote.address
-```
+# Sync local ~/directory with remote $HOME/directory on me@awesome.person
+sy ~/directory -r me@awesome.person
 
-2. Synchronize a directory to that remote
+# Sync current directory with the same path on me@awesome.person, port 2222
+sy -r me@awesome.person -p 2222
 
-```bash
-$ sy ~/directory -r desktop
-# SYNC LOCAL      /home/me/directory
-# WITH REMOTE     user@some.remote.address:directory
-...
+# Register a remote under a short name
+sy-config add me me@awesome.person -p 2222
+
+# Synchronize to a named remote
+sy -r me
+
+# Synchronize the current directory to the last used remote (for that directory)
+sy
 ```
 
 By default, `sy` can take on any path within your `$HOME` and will set the corresponding path on the remote's `$HOME`. It is possible to change this behavior or synchronize paths outside of `$HOME` using the `sy-config path` command.
 
 `sy` with no argument will sync the current directory using the last remote for that directory (you will need to use the -r flag the first time, but not subsequently).
-
-```bash
-sy  # equivalent to sy . with last remote used
-```
 
 
 ## Howto
@@ -51,7 +49,7 @@ Putting `.bsync-ignore` files in subdirectories to ignore files in these subdire
 
 ### Customize synchronization paths
 
-To synchronize local `/etc` to remote `/etcetera`:
+To synchronize local `/etc` to remote `/etcetera`, for named remote `desktop`:
 
 ```bash
 sy-config path add desktop /etc /etcetera

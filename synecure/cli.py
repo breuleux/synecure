@@ -9,9 +9,7 @@ from .utils import get_config, get_config_path, write_config, readlines, writeli
 
 
 def q(message=None):
-    if message:
-        print(message)
-    sys.exit(1)
+    sys.exit(message)
 
 
 def _cfg_from_url(name, port=22):
@@ -90,6 +88,14 @@ def main():
     # Name of the remote to sync with
     # [alias: -r]
     remote: Option = default(None)
+
+    # Port to connect to
+    # [alias: -p]
+    port: Option = default(None)
+    if port is not None:
+        if "@" not in remote:
+            sys.exit("ERROR: Cannot use -p unless remote is user@host")
+        remote = f"{remote}:{port}"
 
     # Do a dry run
     # [alias: -n]
