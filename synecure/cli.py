@@ -14,8 +14,29 @@ def q(message=None):
     sys.exit(1)
 
 
+def _cfg_from_url(name, port=22):
+    if "@" in name:
+        if ":" in name:
+            name, port = name.split(":")
+        else:
+            port = 22
+        return {
+            "type": "ssh",
+            "url": name,
+            "port": port,
+            "paths": {
+                os.getenv("HOME"): ""
+            }
+        }
+    else:
+        return None
+
+
 def _check_remote(cfg, name, msg=None):
     if name not in cfg:
+        rval = _cfg_from_url(name)
+        if rval is not None:
+            return rval
         print(f"ERROR: remote '{name}' is not defined")
         if msg:
             print(msg)
@@ -122,7 +143,7 @@ def _check_dir(url, path, port):
     if url:
         args = ["ssh", url]
         if port:
-            args.extend(["-p", "22005"])
+            args.extend(["-p", str(port)])
         args.append(f"test -d {quote(path)}")
         result = subprocess.call(args)
         return result == 0
@@ -233,14 +254,7 @@ def config_add():
 
     cfg = get_config("remotes.json")
     if "@" in url:
-        cfg[name] = {
-            "type": "ssh",
-            "url": url,
-            "port": port,
-            "paths": {
-                os.getenv("HOME"): ""
-            }
-        }
+        cfg[name] = _cfg_from_url(url, port)
     else:
         cfg[name] = {
             "type": "local",
