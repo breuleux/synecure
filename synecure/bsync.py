@@ -654,7 +654,7 @@ def show_conflict(f1, f2, path):
 			p2+= "("+getdatestr(f2)+")"
 
 	print("CONFLICT detected on: "+tostr(path))
-	print_action("", "LEFT DIR CHANGE", "   ", "RIGHT DIR CHANGE")
+	print_action("", "LOCAL CHANGE", "   ", "REMOTE CHANGE")
 	print_action("", p1, "   ", p2)
 	print()
 
@@ -678,10 +678,10 @@ def ask_conflict(f1, f2, path, tokeep):
 			sys.exit("Error: Conflict found in batch mode. Exiting.")
 
 		if resp!=None:
-			print("	1	Keep left version")
-			print("	2	Keep right version")
-			print("	1a	Keep left version for all")
-			print("	2a	Keep right version for all")
+			print("	1	Keep local version")
+			print("	2	Keep remote version")
+			print("	1a	Keep local version for all")
+			print("	2a	Keep remote version for all")
 			print("  Please note: you will be able to confirm the actions later.\n")
 
 		resp = myinput("Which one do I keep? [1/2/1a/2a/Quit/Help] ")
@@ -1169,7 +1169,7 @@ if len(mkdir1)==0 and len(moves1)==0 and len(rm1)==0 and len(rmdirs1)==0 and len
 
 if len(conflicts) > 0: print_line()
 print()
-print_action("ACTION", "(LEFT DIR CONTENT)", "   ", "(RIGHT DIR CONTENT)")
+print_action("ACTION", "(LOCAL CONTENT)", "   ", "(REMOTE CONTENT)")
 print()
 print_actions(2, mkdir2,moves2,rm2,rmdirs2, copy12,sync12)
 print_actions(1, mkdir1,moves1,rm1,rmdirs1, copy21,sync21)
