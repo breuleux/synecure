@@ -207,12 +207,12 @@ def plan_sync(path, remote_name, remotes, directories,
         elif interactive:
             pass
         else:
-            cmdopts.append("-b")
+            cmdopts.append("-y")
 
         if remote["type"] == "ssh":
             cmdopts.append(f"-p {remote['port']}")
 
-        cmd = ["bsync", *cmdopts, path, dest]
+        cmd = ["sy-bsync", *cmdopts, path, dest]
         commands.append(cmd)
 
     else:

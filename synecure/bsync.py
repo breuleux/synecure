@@ -887,6 +887,7 @@ def usage():
 	usage+= "	-c		Check that dirs are identical in the end\n"
 	usage+= "	-d		Make the dirs if they do not exist\n"
 	usage+= "	-n		Dry run: report changes without applying them\n"
+	usage+= "	-y		Apply the changes when no conflict\n"
 	usage+= "	-p PORT		Port for SSH\n"
 	usage+= "	-o SSHARGS	Custom options for SSH\n"
 	printerr(usage)
@@ -895,13 +896,13 @@ def usage():
 
 #### process commandline args
 try:
-	opts, args = getopt.gnu_getopt(sys.argv[1:], "vcibdnp:o:")
+	opts, args = getopt.gnu_getopt(sys.argv[1:], "vcibdnyp:o:")
 except getopt.GetoptError as err:
 	printerr(err)
 	usage()
 	sys.exit(2)
 
-verbose = check = ignoreperms = batch = mkdirp = dry_run = False
+verbose = check = ignoreperms = batch = mkdirp = dry_run = yes = False
 sshport = None
 sshargs = ""
 for o, a in opts:
@@ -917,6 +918,8 @@ for o, a in opts:
 		sshargs = a
 	elif o == "-b":
 		batch = True
+	elif o == "-y":
+		yes = True
 	elif o == "-d":
 		mkdirp = True
 	elif o == "-n":
@@ -1179,7 +1182,7 @@ print("Todo in "+args[0]+": "+get_dir_summary(mkdir1,moves1,rm1,rmdirs1, copy21,
 print("Todo in "+args[1]+": "+get_dir_summary(mkdir2,moves2,rm2,rmdirs2, copy12,sync12))
 
 resp = "none"
-if batch: resp = "y"
+if batch or yes: resp = "y"
 elif dry_run: resp = "n"
 
 while resp != "y" and resp != "n":
