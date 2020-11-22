@@ -117,6 +117,16 @@ def main():
     if resolve not in ("local", "remote", "prompt"):
         sys.exit("ERROR: resolve must be 'local', 'remote' or 'prompt'")
 
+    # Resolve a conflict with local copy
+    # [option: -1]
+    # [false-options: -2]
+    # [false-options-doc: Resolve a conflict with remote copy]
+    resolve_local: Option & bool  = default(None)
+    if resolve_local is True:
+        resolve = "local"
+    if resolve_local is False:
+        resolve = "remote"
+
     remotes = get_config("remotes.json")
     directories = get_config("directories.json")
 
