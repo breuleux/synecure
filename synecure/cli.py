@@ -5,7 +5,14 @@ import subprocess
 import shlex
 from coleo import Option, default, run_cli
 
-from .utils import get_config, get_config_path, write_config, readlines, writelines, quote
+from .utils import (
+    get_config,
+    get_config_path,
+    write_config,
+    readlines,
+    writelines,
+    quote,
+)
 
 
 def q(message=None):
@@ -22,9 +29,7 @@ def _cfg_from_url(name, port=22):
             "type": "ssh",
             "url": name,
             "port": port,
-            "paths": {
-                os.getenv("HOME"): ""
-            }
+            "paths": {os.getenv("HOME"): ""},
         }
     else:
         return None
@@ -113,7 +118,7 @@ def main():
     interactive: Option & bool = default(False)
 
     # Resolve a conflict with "local" or "remote" copy (default: "prompt")
-    resolve: Option  = default("prompt")
+    resolve: Option = default("prompt")
     if resolve not in ("local", "remote", "prompt"):
         sys.exit("ERROR: resolve must be 'local', 'remote' or 'prompt'")
 
@@ -121,7 +126,7 @@ def main():
     # [option: -1]
     # [false-options: -2]
     # [false-options-doc: Resolve a conflict with remote copy]
-    resolve_local: Option & bool  = default(None)
+    resolve_local: Option & bool = default(None)
     if resolve_local is True:
         resolve = "local"
     if resolve_local is False:
@@ -142,7 +147,10 @@ def main():
     for filename in files:
         filename = os.path.realpath(os.path.expanduser(filename))
         commands += plan_sync(
-            filename, remote, remotes, directories,
+            filename,
+            remote,
+            remotes,
+            directories,
             dry=dry_run,
             verbose=verbose,
             interactive=interactive,
@@ -174,15 +182,26 @@ def _check_dir(url, path, port):
         return os.path.isdir(path)
 
 
-def plan_sync(path, remote_name, remotes, directories,
-              dry=False, verbose=False, interactive=False,
-              resolve="prompt"):
+def plan_sync(
+    path,
+    remote_name,
+    remotes,
+    directories,
+    dry=False,
+    verbose=False,
+    interactive=False,
+    resolve="prompt",
+):
     if remote_name is None:
         if path not in directories:
             q("Please specify a destination")
         regdest = directories[path]
         assert regdest is not None
-        return plan_sync(path, regdest, remotes, directories,
+        return plan_sync(
+            path,
+            regdest,
+            remotes,
+            directories,
             dry=dry,
             interactive=interactive,
             resolve=resolve,
@@ -193,11 +212,13 @@ def plan_sync(path, remote_name, remotes, directories,
     remote = _check_remote(remotes, remote_name)
     for pfx, repl in _sort_paths(remote):
         if path.startswith(pfx):
-            destpath = os.path.join(repl, path[len(pfx) + 1:])
+            destpath = os.path.join(repl, path[len(pfx) + 1 :])
             break
     else:
-        q(f"There is no rule to remap path '{path}' on '{remote_name}'"
-          f"\nTry: 'sy-remote path {remote_name} <SRC_PREFIX> <DEST_PREFIX>'")
+        q(
+            f"There is no rule to remap path '{path}' on '{remote_name}'"
+            f"\nTry: 'sy-remote path {remote_name} <SRC_PREFIX> <DEST_PREFIX>'"
+        )
 
     print(f"# SYNC LOCAL      {path}")
     if remote["type"] == "ssh":
@@ -248,9 +269,11 @@ def plan_sync(path, remote_name, remotes, directories,
             common.append("-v")
         if remote["type"] == "ssh":
             common += [
-                "-e", f"ssh -p {remote['port']}",
+                "-e",
+                f"ssh -p {remote['port']}",
                 # This is a dirty trick to create the directory on the remote
-                "--rsync-path", f"mkdir -p {destdir}; rsync",
+                "--rsync-path",
+                f"mkdir -p {destdir}; rsync",
             ]
         elif remote["type"] == "local":
             commands.append(["mkdir", "-p", destdir])
@@ -289,9 +312,7 @@ def config_add():
             "type": "local",
             "url": "localhost",
             "port": None,
-            "paths": {
-                os.getenv("HOME"): os.path.realpath(os.path.expanduser(url))
-            }
+            "paths": {os.getenv("HOME"): os.path.realpath(os.path.expanduser(url))},
         }
     write_config("remotes.json", cfg)
 
@@ -311,7 +332,7 @@ def config_view():
 def config_list():
     cfg = get_config("remotes.json")
     for name, defn in cfg.items():
-        if defn['port'] in (None, 22):
+        if defn["port"] in (None, 22):
             port = ""
         else:
             port = f":{defn['port']}"

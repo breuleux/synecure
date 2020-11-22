@@ -44,7 +44,8 @@ def writelines(filename, lines):
         for line in lines:
             print(line, file=f)
 
-_find_unsafe = re.compile(r'[^\w@%+=:,./-]', re.ASCII).search
+
+_find_unsafe = re.compile(r"[^\w@%+=:,./-]", re.ASCII).search
 
 
 class NoQuote:
