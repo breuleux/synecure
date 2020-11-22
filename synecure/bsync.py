@@ -888,6 +888,8 @@ def usage():
 	usage+= "	-d		Make the dirs if they do not exist\n"
 	usage+= "	-n		Dry run: report changes without applying them\n"
 	usage+= "	-y		Apply the changes when no conflict\n"
+	usage+= "	-1		Keep local version of changes on conflict\n"
+	usage+= "	-2		Keep remote version of changes on conflict\n"
 	usage+= "	-p PORT		Port for SSH\n"
 	usage+= "	-o SSHARGS	Custom options for SSH\n"
 	printerr(usage)
@@ -896,7 +898,7 @@ def usage():
 
 #### process commandline args
 try:
-	opts, args = getopt.gnu_getopt(sys.argv[1:], "vcibdnyp:o:")
+	opts, args = getopt.gnu_getopt(sys.argv[1:], "vcibdny12p:o:")
 except getopt.GetoptError as err:
 	printerr(err)
 	usage()
@@ -905,6 +907,7 @@ except getopt.GetoptError as err:
 verbose = check = ignoreperms = batch = mkdirp = dry_run = yes = False
 sshport = None
 sshargs = ""
+tokeep = None
 for o, a in opts:
 	if o == "-v":
 		verbose = True
@@ -924,6 +927,10 @@ for o, a in opts:
 		mkdirp = True
 	elif o == "-n":
 		dry_run = True
+	elif o == "-1":
+		tokeep = "1a"
+	elif o == "-2":
+		tokeep = "2a"
 	else:
 		assert False, "unhandled option"
 
@@ -1031,7 +1038,6 @@ copy12 = []
 copy21 = []
 sync12 = []
 sync21 = []
-tokeep = None
 # process all original paths (from snapshot)
 for path, fo in origlist.items():
 	# f1==None f2==None				deleted both sides

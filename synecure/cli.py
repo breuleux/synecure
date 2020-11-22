@@ -112,6 +112,11 @@ def main():
     # [alias: -i]
     interactive: Option & bool = default(False)
 
+    # Resolve a conflict with "local" or "remote" copy (default: "prompt")
+    resolve: Option  = default("prompt")
+    if resolve not in ("local", "remote", "prompt"):
+        sys.exit("ERROR: resolve must be 'local', 'remote' or 'prompt'")
+
     remotes = get_config("remotes.json")
     directories = get_config("directories.json")
 
@@ -130,7 +135,8 @@ def main():
             filename, remote, remotes, directories,
             dry=dry_run,
             verbose=verbose,
-            interactive=interactive
+            interactive=interactive,
+            resolve=resolve,
         )
 
     for command in commands:
@@ -159,7 +165,8 @@ def _check_dir(url, path, port):
 
 
 def plan_sync(path, remote_name, remotes, directories,
-              dry=False, verbose=False, interactive=False):
+              dry=False, verbose=False, interactive=False,
+              resolve="prompt"):
     if remote_name is None:
         if path not in directories:
             q("Please specify a destination")
@@ -167,7 +174,8 @@ def plan_sync(path, remote_name, remotes, directories,
         assert regdest is not None
         return plan_sync(path, regdest, remotes, directories,
             dry=dry,
-            interactive=interactive
+            interactive=interactive,
+            resolve=resolve,
         )
 
     directories[path] = remote_name
@@ -208,6 +216,11 @@ def plan_sync(path, remote_name, remotes, directories,
             pass
         else:
             cmdopts.append("-y")
+
+        if resolve == "local":
+            cmdopts.append("-1")
+        elif resolve == "remote":
+            cmdopts.append("-2")
 
         if remote["type"] == "ssh":
             cmdopts.append(f"-p {remote['port']}")
