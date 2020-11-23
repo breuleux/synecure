@@ -23,8 +23,6 @@ def _cfg_from_url(name, port=22):
     if "@" in name:
         if ":" in name:
             name, port = name.split(":")
-        else:
-            port = 22
         return {
             "type": "ssh",
             "url": name,
