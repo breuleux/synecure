@@ -538,8 +538,20 @@ def load_orig(ssh1,dir1name, ssh2,dir2name):
 
 	ignores1 = get_ignores(ignorefile1, ssh1,dir1name)
 	ignores2 = get_ignores(ignorefile2, ssh2,dir2name)
-	ignores_global = readlines(get_config_path("ignore"))
-	ignores = parse_gitignore(ignores1 | ignores2 | set(ignores_global))
+	ignores_global = set(readlines(get_config_path("ignore")))
+
+	try:
+		ignores_global_remote = ssh.check_output(
+			"cat", ".config/synecure/ignore",
+			stderr=subprocess.DEVNULL
+		).run().decode("utf8").split("\n")
+		ignores_global_remote = set(ignores_global_remote)
+	except Exception as exc:
+		ignores_global_remote = set()
+
+	all_ignores = ignores1 | ignores2 | ignores_global | ignores_global_remote
+	all_ignores.discard("")
+	ignores = parse_gitignore(all_ignores)
 
 	common_snaps = snaps1.intersection(snaps2)
 	orig = collections.OrderedDict()

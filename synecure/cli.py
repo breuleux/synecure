@@ -8,6 +8,7 @@ from coleo import Option, default, run_cli
 from .utils import (
     get_config,
     get_config_path,
+    edit_config,
     write_config,
     readlines,
     writelines,
@@ -399,33 +400,36 @@ def config_ignore():
     # [positional: *]
     patterns: Option = default([])
 
-    ign = get_config_path("ignore")
-    lines = readlines(ign)
+    # List the ignores
+    # [alias: -l]
+    list: Option & bool = default(False)
 
-    for line in lines:
-        print(f" {line}")
-    for pattern in patterns:
-        if pattern not in lines:
-            print(f"+{pattern}")
-            lines.append(pattern)
-
-    writelines(ign, lines)
-
-
-def config_unignore():
-    # Patterns to ignore
-    # [positional: *]
-    patterns: Option = default([])
+    # Remove the ignores
+    # [alias: -r]
+    # [nargs: *]
+    remove: Option = default([])
 
     ign = get_config_path("ignore")
-    lines = readlines(ign)
 
+    if list:
+        print(open(ign).read(), end="")
+        sys.exit(0)
+
+    lines = readlines(ign)
     new_lines = []
+
     for line in lines:
-        if line in patterns:
+        if line in remove:
             print(f"-{line}")
         else:
             print(f" {line}")
             new_lines.append(line)
 
-    writelines(ign, new_lines)
+    no_add = {*lines, *remove}
+
+    for pattern in patterns:
+        if pattern not in no_add:
+            print(f"+{pattern}")
+            lines.append(pattern)
+
+    writelines(ign, lines)
