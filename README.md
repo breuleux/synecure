@@ -52,7 +52,7 @@ Putting `.bsync-ignore` files in subdirectories to ignore files in these subdire
 To synchronize local `/etc` to remote `/etcetera`, for named remote `desktop`:
 
 ```bash
-sy-config path add desktop /etc /etcetera
+sy-config path desktop /etc /etcetera
 ```
 
 Obviously, this will only work if the remote user has the permissions to write to `/etcetera`. You can have multiple remotes for the same host with different users, if that helps.
@@ -60,12 +60,12 @@ Obviously, this will only work if the remote user has the permissions to write t
 To synchronize local `~/hello` to remote `~/bonjour`:
 
 ```bash
-sy-config path add desktop ~/hello bonjour
+sy-config path desktop ~/hello bonjour
 ```
 
 Don't use `~` for the remote path, it will complete to the wrong thing.
 
-To list available paths:
+To list available remotes and paths:
 
 ```bash
 sy-config list
