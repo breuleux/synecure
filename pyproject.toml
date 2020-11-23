@@ -10,7 +10,7 @@ repository = "https://github.com/breuleux/synecure"
 
 [tool.poetry.dependencies]
 python = "^3.7"
-coleo = "^0.2.0"
+coleo = "^0.2.1"
 
 [tool.poetry.dev-dependencies]
 black = "^19.10b0"
