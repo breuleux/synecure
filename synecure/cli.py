@@ -291,6 +291,7 @@ def plan_sync(
 
 
 def config_add():
+    """Add a new remote or edit an existing one."""
     # Name of the remote
     # [positional]
     name: Option
@@ -317,6 +318,7 @@ def config_add():
 
 
 def config_view():
+    """View configuration for a remote."""
     # Name of the remote
     # [positional: ?]
     name: Option
@@ -329,6 +331,7 @@ def config_view():
 
 
 def config_list():
+    """List existing remotes and paths."""
     cfg = get_config("remotes.json")
     for name, defn in cfg.items():
         if defn["port"] in (None, 22):
@@ -340,7 +343,13 @@ def config_list():
             print(f"    {local_path:30} -> :{remote_path}")
 
 
+def config_edit():
+    """Edit the configuration file directly."""
+    edit_config("remotes.json")
+
+
 def config_path():
+    """Edit path mappings for a remote."""
     # Name of the remote
     # [positional]
     name: Option
@@ -385,6 +394,7 @@ def config_path():
 
 
 def config_remove():
+    """Remove a remote."""
     # Name of the remote
     # [positional]
     name: Option
@@ -396,6 +406,7 @@ def config_remove():
 
 
 def config_ignore():
+    """Add/remove global ignore patterns."""
     # Patterns to ignore
     # [positional: *]
     patterns: Option = default([])
@@ -413,6 +424,10 @@ def config_ignore():
 
     if list:
         print(open(ign).read(), end="")
+        sys.exit(0)
+
+    if not patterns:
+        edit_config("ignore")
         sys.exit(0)
 
     lines = readlines(ign)

@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import subprocess
 
 
 def get_config_path(name=None):
@@ -26,6 +27,16 @@ def write_config(name, cfg, silent=False):
         json.dump(cfg, f, indent=4)
     if not silent:
         print(f"Written config at: {path}")
+
+
+def edit_config(name):
+    editor = os.getenv("EDITOR")
+    if editor:
+        cfg = get_config_path(name)
+        subprocess.run(f"{editor} {cfg}", shell=True)
+        print(f"Wrote {cfg}")
+    else:
+        print(f"No $EDITOR!")
 
 
 def sort_paths(remote):
