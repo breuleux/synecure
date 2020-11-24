@@ -47,6 +47,28 @@ Add a `.bsync-ignore` file in the root directory to sync with a filename or glob
 Putting `.bsync-ignore` files in subdirectories to ignore files in these subdirectories will unfortunately not work, so `sy ~/x` and `sy ~/x/y` may synchronize the contents of `~/x/y` differently if both directories contain different `.bsync-ignore` files, or if one has an ignore file and the other does not.
 
 
+### Global ignores
+
+The `sy-config ignore` command can be used to generally ignore files or directories:
+
+```bash
+# Edit the ignore file using $EDITOR, if it is set
+sy-config ignore
+
+# List all existing ignores
+sy-config ignore -l
+
+# Ignore all files that end with ~
+# Do not forget the single quotes here, to avoid shell expansion!
+sy-config ignore '*~'
+
+# Unignore files that end with ~
+sy-config ignore -r '*~'
+```
+
+The ignores work mostly like `.gitignore` or `.bsync-ignore` above, but they apply globally. Note that `sy` will also read *remote-side* global ignores when syncing to a remote. Global ignores are located at `$HOME/.config/synecure/ignore`, so a remote can define some global ignores even without installing `sy` remote-side. Global ignores local-side, remote-side, as well as `.bsync-ignore` files local-side and remote-side are all merged together.
+
+
 ### Customize synchronization paths
 
 To synchronize local `/etc` to remote `/etcetera`, for named remote `desktop`:
@@ -77,8 +99,28 @@ sy-config list
 sy-config add dropbox ~/Dropbox
 ```
 
+## Other options
+
 ### Dry run
 
 Use the `-n` flag to perform a "dry run": `sy` (well, `bsync`) will report all the transfers that would occur but it will not perform them.
 
 Use `--show-plan` to get the sequence of commands that `sy` will run.
+
+### Conflict resolution
+
+Whenever a file was modified on both ends since the last sync, `sy` will ask which one you want to keep.
+
+Use `sy <options> --resolve local` (or `sy <options> -1`) to always keep the local file without prompting, or `--resolve remote` (or `-2`) to always keep the remote file.
+
+### List directories
+
+`sy -l` will list all directories that have been previously synced using the tool, along with the last remote they were synced to (remember that `sy` without the `-r` option will sync to the last remote).
+
+## Configuration files
+
+* `~/.config/synecure/remotes.json` defines named remotes and paths.
+  * You can open an editor for that file with `sy-config edit`
+* `~/.config/synecure/ignore` lists global ignores.
+  * You can open an editor for that file with `sy-config ignore`
+* `~/.config/synecure/directories.json` maps directories to last used remotes.
