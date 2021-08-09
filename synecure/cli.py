@@ -14,6 +14,7 @@ from .utils import (
     writelines,
     quote,
 )
+from .version import version as sy_version
 
 
 def q(message=None):
@@ -93,6 +94,11 @@ def main():
     # List all sy directories
     # [alias: -l]
     list: Option & bool = default(False)
+
+    # Version information
+    version: Option & bool = default(False)
+    if version:
+        q(f"sy v{sy_version}")
 
     # Files to synchronize
     # [positional: *]
