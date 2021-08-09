@@ -32,7 +32,8 @@ def write_config(name, cfg, silent=False):
 def edit_config(name):
     editor = os.getenv("EDITOR")
     if editor:
-        cfg = get_config_path(name)
+        cfg = name if name.startswith("/") else get_config_path(name)
+        subprocess.run(f"cp {cfg} {cfg}.bk", shell=True)
         subprocess.run(f"{editor} {cfg}", shell=True)
         print(f"Wrote {cfg}")
     else:

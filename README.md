@@ -22,17 +22,14 @@ sy ~/directory -r me@awesome.person
 # Sync current directory with the same path on me@awesome.person, port 2222
 sy -r me@awesome.person -p 2222
 
-# Register a remote under a short name
-sy-config add me me@awesome.person -p 2222
-
-# Synchronize to a named remote
+# Synchronize to a named remote from your SSH config
 sy -r me
 
 # Synchronize the current directory to the last used remote (for that directory)
 sy
 ```
 
-By default, `sy` can take on any path within your `$HOME` and will set the corresponding path on the remote's `$HOME`. It is possible to change this behavior or synchronize paths outside of `$HOME` using the `sy-config path` command.
+By default, `sy` can take on any path within your `$HOME` and will set the corresponding path on the remote's `$HOME`. It is possible to change this behavior or synchronize paths outside of `$HOME` using the `sy-config add-path` command.
 
 `sy` with no argument will sync the current directory using the last remote for that directory (you will need to use the -r flag the first time, but not subsequently).
 
@@ -74,7 +71,7 @@ The ignores work mostly like `.gitignore` or `.bsync-ignore` above, but they app
 To synchronize local `/etc` to remote `/etcetera`, for named remote `desktop`:
 
 ```bash
-sy-config path desktop /etc /etcetera
+sy-config add-path desktop /etc /etcetera
 ```
 
 Obviously, this will only work if the remote user has the permissions to write to `/etcetera`. You can have multiple remotes for the same host with different users, if that helps.
@@ -82,7 +79,7 @@ Obviously, this will only work if the remote user has the permissions to write t
 To synchronize local `~/hello` to remote `~/bonjour`:
 
 ```bash
-sy-config path desktop ~/hello bonjour
+sy-config add-path desktop ~/hello bonjour
 ```
 
 Don't use `~` for the remote path, it will complete to the wrong thing.
@@ -96,7 +93,7 @@ sy-config list
 ### Sync local directories
 
 ```bash
-sy-config add dropbox ~/Dropbox
+sy-config add dropbox file://~/Dropbox
 ```
 
 ## Other options
@@ -119,8 +116,10 @@ Use `sy <options> --resolve local` (or `sy <options> -1`) to always keep the loc
 
 ## Configuration files
 
-* `~/.config/synecure/remotes.json` defines named remotes and paths.
+* `~/.config/synecure/remotes.json` defines protocols and paths for named remotes.
   * You can open an editor for that file with `sy-config edit`
 * `~/.config/synecure/ignore` lists global ignores.
   * You can open an editor for that file with `sy-config ignore`
 * `~/.config/synecure/directories.json` maps directories to last used remotes.
+* `~/.ssh/config` is the standard location to define host information for `ssh`.
+  * For convenience, you can open an editor for that file with `sy-config ssh`

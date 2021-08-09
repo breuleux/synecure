@@ -20,29 +20,38 @@ def q(message=None):
     sys.exit(message)
 
 
-def _cfg_from_url(name, port=22):
-    if "@" in name:
-        if ":" in name:
-            name, port = name.split(":")
-        return {
-            "type": "ssh",
-            "url": name,
-            "port": port,
-            "paths": {os.getenv("HOME"): ""},
-        }
-    else:
-        return None
+def _realpath(filename):
+    return os.path.realpath(os.path.expanduser(filename))
 
 
-def _check_remote(cfg, name, msg=None):
+def _get_remote(cfg, name):
+    if name in cfg:
+        return cfg[name]
+
+    return {
+        "type": "ssh",
+        "url": name,
+        "paths": {os.getenv("HOME"): ""},
+    }
+
+
+def _cfg_from_url(name):
+    return {
+        "type": "ssh",
+        "url": name,
+        "paths": {os.getenv("HOME"): ""},
+    }
+
+
+def _check_remote(cfg, name, create=False, msg=None):
     if name not in cfg:
-        rval = _cfg_from_url(name)
-        if rval is not None:
-            return rval
-        print(f"ERROR: remote '{name}' is not defined")
-        if msg:
-            print(msg)
-        q()
+        if create:
+            cfg[name] = _cfg_from_url(name)
+        else:
+            print(f"ERROR: remote '{name}' is not defined")
+            if msg:
+                print(msg)
+            q()
     return cfg[name]
 
 
@@ -66,7 +75,7 @@ def entry_sy():
 def entry_sy_config():
     commands = {}
     for name, value in globals().items():
-        parts = name.split("_")
+        parts = name.replace("_", "-").split("-", 1)
         if parts[0] == "config" and len(parts) > 1:
             curr = commands
             for part in parts[1:-1]:
@@ -96,10 +105,6 @@ def main():
     # Port to connect to
     # [alias: -p]
     port: Option = default(None)
-    if port is not None:
-        if "@" not in remote:
-            sys.exit("ERROR: Cannot use -p unless remote is user@host")
-        remote = f"{remote}:{port}"
 
     # Do a dry run
     # [alias: -n]
@@ -143,12 +148,15 @@ def main():
     if not files:
         files.append(".")
 
+    remote_config = _get_remote(remotes, remote)
+    remote_config["port"] = port
+
     for filename in files:
-        filename = os.path.realpath(os.path.expanduser(filename))
+        filename = _realpath(filename)
         commands += plan_sync(
             filename,
             remote,
-            remotes,
+            remote_config,
             directories,
             dry=dry_run,
             verbose=verbose,
@@ -184,7 +192,7 @@ def _check_dir(url, path, port):
 def plan_sync(
     path,
     remote_name,
-    remotes,
+    remote,
     directories,
     dry=False,
     verbose=False,
@@ -199,7 +207,7 @@ def plan_sync(
         return plan_sync(
             path,
             regdest,
-            remotes,
+            remote,
             directories,
             dry=dry,
             interactive=interactive,
@@ -208,7 +216,6 @@ def plan_sync(
 
     directories[path] = remote_name
 
-    remote = _check_remote(remotes, remote_name)
     for pfx, repl in _sort_paths(remote):
         if path.startswith(pfx):
             destpath = os.path.join(repl, path[len(pfx) + 1 :])
@@ -223,7 +230,7 @@ def plan_sync(
     if remote["type"] == "ssh":
         dest = f"{remote['url']}:{destpath}"
         print(f"# WITH REMOTE     {dest}")
-    elif remote["type"] == "local":
+    elif remote["type"] == "file":
         dest = destpath
         print(f"# WITH LOCAL      {dest}")
     else:
@@ -252,7 +259,7 @@ def plan_sync(
         elif resolve == "remote":
             cmdopts.append("-2")
 
-        if remote["type"] == "ssh":
+        if remote["type"] == "ssh" and remote["port"]:
             cmdopts.append(f"-p {remote['port']}")
 
         cmd = ["sy-bsync", *cmdopts, path, dest]
@@ -269,12 +276,13 @@ def plan_sync(
         if remote["type"] == "ssh":
             common += [
                 "-e",
-                f"ssh -p {remote['port']}",
+                f"ssh ",
+                f"-p {remote['port']}" if remote["port"] else "",
                 # This is a dirty trick to create the directory on the remote
                 "--rsync-path",
                 f"mkdir -p {destdir}; rsync",
             ]
-        elif remote["type"] == "local":
+        elif remote["type"] == "file":
             commands.append(["mkdir", "-p", destdir])
 
         cmd1 = [*common, path, dest]
@@ -300,20 +308,31 @@ def config_add():
     # [positional]
     url: Option
 
-    # Port to connect to
-    # [alias: -p]
-    port: Option = default(22)
+    if "://" not in url:
+        q(
+            "URL should be formatted as type://url -- currently accepted are:"
+            "\n* SSH:              ssh://user@host"
+            "\n* Local directory:  file:///path/from/root"
+        )
+
+    typ, url = url.split("://", 1)
+    if typ not in ("ssh", "file"):
+        q(f"Unknown protocol: '{typ}'. Accepted protocols are 'ssh' and 'file'.")
+
+    if typ == "file":
+        url = _realpath(url)
 
     cfg = get_config("remotes.json")
-    if "@" in url:
-        cfg[name] = _cfg_from_url(url, port)
+    if name in cfg:
+        entry = cfg[name]
+        entry["type"] = typ
+        entry["url"] = url
     else:
-        cfg[name] = {
-            "type": "local",
-            "url": "localhost",
-            "port": None,
-            "paths": {os.getenv("HOME"): os.path.realpath(os.path.expanduser(url))},
-        }
+        entry = {"type": typ, "url": url, "paths": {os.getenv("HOME"): ""}}
+        cfg[name] = entry
+
+    print(json.dumps(entry, indent=4))
+
     write_config("remotes.json", cfg)
 
 
@@ -334,11 +353,7 @@ def config_list():
     """List existing remotes and paths."""
     cfg = get_config("remotes.json")
     for name, defn in cfg.items():
-        if defn["port"] in (None, 22):
-            port = ""
-        else:
-            port = f":{defn['port']}"
-        print(f"{name:30} {defn['url']}{port}")
+        print(f"{name:30} ({defn['type']}) {defn['url']}")
         for local_path, remote_path in defn["paths"].items():
             print(f"    {local_path:30} -> :{remote_path}")
 
@@ -348,49 +363,68 @@ def config_edit():
     edit_config("remotes.json")
 
 
-def config_path():
-    """Edit path mappings for a remote."""
+def config_ssh():
+    """Edit your SSH configuration file."""
+    edit_config(_realpath("~/.ssh/config"))
+
+
+def _list_paths(remote):
+    for s, d in _sort_paths(remote):
+        print(f"{s:30}:{d}")
+
+
+def config_add_path():
+    """Add a path mapping for a remote."""
     # Name of the remote
     # [positional]
     name: Option
 
     # Source path
-    # [positional: ?]
+    # [positional]
     source: Option
 
     # Destination path
-    # [positional: ?]
+    # [positional]
     dest: Option
 
-    # List path mappings
-    # [alias: -l]
-    list: Option & bool = default(False)
+    cfg = get_config("remotes.json")
+    remote = _check_remote(cfg, name, create=True)
 
-    # Whether to remove the path
-    # [alias: -r]
-    remove: Option = default(None)
+    paths = remote["paths"]
+    paths[source] = dest
+    _list_paths(remote)
+    write_config("remotes.json", cfg)
+
+
+def config_list_paths():
+    """List paths for a remote"""
+    # Name of the remote
+    # [positional]
+    name: Option
 
     cfg = get_config("remotes.json")
-    remote = _check_remote(cfg, name, msg="Nothing to do")
+    remote = _check_remote(cfg, name, create=False)
+    _list_paths(remote)
 
-    if list:
-        for s, d in _sort_paths(remote):
-            print(f"{s:30}:{d}")
 
-    elif remove is not None:
-        if remove not in remote["paths"]:
-            q(f"Source path '{remove}' is not mapped")
-        del remote["paths"][remove]
-        write_config("remotes.json", cfg)
+def config_remove_path():
+    """Remove a path mapping for a remote"""
+    # Name of the remote
+    # [positional]
+    name: Option
 
-    else:
-        if source is None:
-            q("SOURCE must be specified")
-        if dest is None:
-            q("DEST must be specified")
-        paths = remote["paths"]
-        paths[source] = dest
-        write_config("remotes.json", cfg)
+    # Source path
+    # [positional]
+    source: Option
+
+    cfg = get_config("remotes.json")
+    remote = _check_remote(cfg, name, create=False)
+
+    if source not in remote["paths"]:
+        q(f"Source path '{source}' is not mapped")
+    del remote["paths"][source]
+    _list_paths(remote)
+    write_config("remotes.json", cfg)
 
 
 def config_remove():
@@ -400,7 +434,7 @@ def config_remove():
     name: Option
 
     cfg = get_config("remotes.json")
-    _check_remote(cfg, name, msg="Nothing to remove")
+    _check_remote(cfg, name, create=False, msg="Nothing to remove")
     del cfg[name]
     write_config("remotes.json", cfg)
 
