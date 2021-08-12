@@ -154,16 +154,17 @@ def main():
     if not files:
         files.append(".")
 
-    remote_config = _get_remote(remotes, remote)
-    remote_config["port"] = port
-
     for filename in files:
         filename = _realpath(filename)
+
+        remote_name = _fill_remote(filename, remote, directories)
+        remote_config = _get_remote(remotes, remote_name)
+        remote_config["port"] = port
+
         commands += plan_sync(
             filename,
             remote,
             remote_config,
-            directories,
             dry=dry_run,
             verbose=verbose,
             interactive=interactive,
@@ -180,6 +181,18 @@ def main():
             subprocess.run(command)
 
     write_config("directories.json", directories, silent=True)
+
+
+def _fill_remote(path, remote_name, directories):
+    if remote_name is None:
+        if path not in directories:
+            q("Please specify a destination")
+        regdest = directories[path]
+        assert regdest is not None
+        return regdest
+    else:
+        directories[path] = remote_name
+        return remote_name
 
 
 def _check_dir(url, path, port):
@@ -199,28 +212,11 @@ def plan_sync(
     path,
     remote_name,
     remote,
-    directories,
     dry=False,
     verbose=False,
     interactive=False,
     resolve="prompt",
 ):
-    if remote_name is None:
-        if path not in directories:
-            q("Please specify a destination")
-        regdest = directories[path]
-        assert regdest is not None
-        return plan_sync(
-            path,
-            regdest,
-            remote,
-            directories,
-            dry=dry,
-            interactive=interactive,
-            resolve=resolve,
-        )
-
-    directories[path] = remote_name
 
     for pfx, repl in _sort_paths(remote):
         if path.startswith(pfx):
